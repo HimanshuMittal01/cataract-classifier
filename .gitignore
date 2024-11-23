@@ -1,0 +1,9 @@
+# Data
+input/
+data/
+
+# Environment
+.env
+.venv/
+venv/
+env/
