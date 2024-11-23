@@ -3,3 +3,4 @@ typer
 timm
 fastapi[standard]
 matplotlib
+albumentations

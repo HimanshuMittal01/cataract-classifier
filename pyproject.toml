@@ -16,6 +16,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "albumentations>=1.4.21",
     "fastapi[standard]>=0.115.5",
     "ipykernel>=6.29.5",
     "matplotlib>=3.9.2",
