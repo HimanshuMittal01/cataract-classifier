@@ -26,8 +26,10 @@ def display_dir_items(path):
     for filepath in path.glob("*"):
         pathtype = "File" if filepath.is_file() else "Folder"
         filetype_counter[pathtype] += 1
-        filesize = filepath.stat().st_size
-        table.add_row(pathtype, str(filepath), sizeof_fmt(filesize))
+        filesize = (
+            sizeof_fmt(filepath.stat().st_size) if pathtype == "File" else ""
+        )
+        table.add_row(pathtype, str(filepath), filesize)
 
     table.title = f"{filetype_counter['File']} files, {filetype_counter['Folder']} folders"
     print(table)
