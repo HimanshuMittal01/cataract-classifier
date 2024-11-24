@@ -134,6 +134,9 @@ def get_dataset_paths(
         + test_normal_img_files[n_valid_normal:]
     )
 
+    random.shuffle(valid_img_files)
+    random.shuffle(test_img_files)
+
     return {
         "train": train_img_files,
         "valid": valid_img_files,

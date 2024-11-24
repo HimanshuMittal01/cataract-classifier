@@ -82,7 +82,7 @@ def predict_on_testset(
     # Evaluate validation set
     test_accuracy, test_aucroc, test_cm = evaluate(
         y_true=torch.cat(test_actuals),
-        y_pred=torch.cat(test_preds),
+        y_pred=torch.sigmoid(torch.cat(test_preds)),
         device=device,
     )
 

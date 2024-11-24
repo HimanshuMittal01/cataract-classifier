@@ -57,8 +57,8 @@ def train_one_epoch(
 
     # Evaluate training set
     train_accuracy, train_aucroc, train_cm = evaluate(
-        y_true=torch.vstack(train_actuals),
-        y_pred=torch.vstack(train_preds),
+        y_true=torch.cat(train_actuals),
+        y_pred=torch.sigmoid(torch.cat(train_preds)),
         device=device,
     )
 
@@ -83,7 +83,7 @@ def train_one_epoch(
     # Evaluate validation set
     valid_accuracy, valid_aucroc, valid_cm = evaluate(
         y_true=torch.cat(valid_actuals),
-        y_pred=torch.cat(valid_preds),
+        y_pred=torch.sigmoid(torch.cat(valid_preds)),
         device=device,
     )
 
