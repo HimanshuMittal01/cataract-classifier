@@ -102,23 +102,37 @@ def get_dataset_paths(
         for filepath in (Path(dataset_path) / "train/").rglob("*")
         if filepath.is_file()
     ]
-    test_img_files = [
+    test_cataract_img_files = [
         filepath
-        for filepath in (Path(dataset_path) / "test/").rglob("*")
+        for filepath in (Path(dataset_path) / "test/cataract/").rglob("*")
+        if filepath.is_file()
+    ]
+    test_normal_img_files = [
+        filepath
+        for filepath in (Path(dataset_path) / "test/normal/").rglob("*")
         if filepath.is_file()
     ]
 
     # Split the test images into validation and testing dataset
+    # Both classes in equal proportion - cataract and normal
     random.seed(random_seed)
-    random.shuffle(test_img_files)
+    random.shuffle(test_cataract_img_files)
+    random.shuffle(test_normal_img_files)
 
-    k = int(len(test_img_files) * valid_test_split)
+    n_valid_cataract = int(len(test_cataract_img_files) * valid_test_split)
+    n_valid_normal = int(len(test_normal_img_files) * valid_test_split)
     assert (
-        k > 0
+        n_valid_cataract > 0 and n_valid_normal > 0
     ), f"No samples in validation dataset; valid_test_ratio={valid_test_split}"
 
-    valid_img_files = test_img_files[:k]
-    test_img_files = test_img_files[k:]
+    valid_img_files = (
+        test_cataract_img_files[:n_valid_cataract]
+        + test_normal_img_files[:n_valid_normal]
+    )
+    test_img_files = (
+        test_cataract_img_files[n_valid_cataract:]
+        + test_normal_img_files[n_valid_normal:]
+    )
 
     return {
         "train": train_img_files,

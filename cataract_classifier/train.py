@@ -10,32 +10,11 @@ import albumentations as A
 from rich import print
 from rich.progress import track
 from torch.utils.data import DataLoader
-from torchmetrics.classification import (
-    BinaryAccuracy,
-    BinaryAUROC,
-    BinaryConfusionMatrix,
-)
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 
 from cataract_classifier.data import CataractDataset
-
-
-def evaluate(y_pred, y_true, device="cpu"):
-    """Evaluate predictions on accuracy, ROC-AUC, etc"""
-    accuracy_metric = BinaryAccuracy(threshold=0.5).to(device)
-    accuracy = accuracy_metric(y_pred, y_true).item()
-
-    # setting thresholds=None is most accurate but also memory consuming
-    aucroc_metric = BinaryAUROC(thresholds=None).to(device)
-    aucroc = aucroc_metric(y_pred, y_true).item()
-
-    # output a figure
-    cm_metric = BinaryConfusionMatrix(threshold=0.5).to(device)
-    cm_metric.update(y_pred, y_true)
-    cm_, ax_ = cm_metric.plot()
-
-    return accuracy, aucroc, cm_
+from cataract_classifier.evaluate import evaluate
 
 
 def train_one_epoch(
@@ -66,9 +45,9 @@ def train_one_epoch(
         loss = criterion(y_pred, y)
 
         # Compute gradeients and update model parameters
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
 
         # Update metrics
         train_step_losses.append(loss.detach().item())

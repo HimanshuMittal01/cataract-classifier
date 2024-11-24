@@ -4,6 +4,7 @@ import typer
 
 from cataract_classifier.data import get_dataset_paths
 from cataract_classifier.train import train
+from cataract_classifier.predict import predict_on_testset
 
 # pretty_exceptions_show_locals is set to False because locals value
 # are long, and sometimes it is difficult to traceback exceptions
@@ -28,6 +29,10 @@ def train_and_evaluate(
         save_path=save_path,
         batch_size=batch_size,
         num_epochs=num_epochs,
+    )
+
+    predict_on_testset(
+        test_img_paths=data_paths["test"], weights_path=save_path
     )
 
 
