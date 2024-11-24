@@ -136,7 +136,15 @@ def train(
     train_dataset = CataractDataset(
         img_filepaths=train_img_paths,
         transform=transform,
-        augmentation=A.Compose([A.Rotate(limit=45, p=0.5)], seed=random_seed),
+        augmentation=A.Compose(
+            [
+                A.Rotate(limit=30, p=0.5),
+                A.HorizontalFlip(p=0.5),
+                A.Blur(p=0.25),
+                A.RandomBrightnessContrast(brightness_limit=(-0.2, 0.2), p=0.5),
+            ],
+            seed=random_seed,
+        ),
     )
     valid_dataset = CataractDataset(
         img_filepaths=valid_img_paths,
