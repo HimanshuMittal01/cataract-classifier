@@ -1,4 +1,13 @@
-"""Module for training pytorch CNN models"""
+"""Module for training PyTorch CNN models.
+
+This module includes functions for training a convolutional neural network (CNN) model on a cataract classification task.
+It supports training, validation, model checkpointing, and saving training metadata.
+
+Functions:
+    - train_one_epoch: Runs one epoch of training and validation, updating model weights and evaluating performance.
+    - train: Main function for training the model on the provided datasets, handling training loops, evaluation,
+      model saving, and logging metrics.
+"""
 
 import json
 from pathlib import Path
@@ -26,15 +35,30 @@ def train_one_epoch(
     epoch: int,
     device: str = "cuda",
 ):
-    """Iterate through train dataloader once for training set to update model weights.
+    """Perform one epoch of training and validation for the model.
 
-    Then, iterate through validation dataloader once for evaluation.
+    This function iterates over the training dataset to update the model weights,
+    and then iterates over the validation dataset to evaluate the model's performance.
+
+    Args:
+        model (torch.nn.Module): The model being trained.
+        train_dataloader : Dataloader for the training dataset.
+        valid_dataloader : Dataloader for the validation dataset.
+        criterion : The loss function used to train the model.
+        optimizer : The optimizer used for model parameter updates.
+        epoch : The current epoch number.
+        device : The device on which to perform training ("cpu", "cuda", or "mps"). Default is "cuda".
+
+    Returns:
+        dict: A dictionary containing the training and validation metrics for the epoch:
+            - "train": Training metrics (loss, accuracy, AUC-ROC, confusion matrix).
+            - "valid": Validation metrics (loss, accuracy, AUC-ROC, confusion matrix).
     """
     # Initialize the average loss for the current epoch
     train_step_losses = []
     valid_step_losses = []
 
-    # Run steps on training dataloader
+    # Train the model on the training dataset
     train_preds = []
     train_actuals = []
     for X, y in track(train_dataloader, description=f"Epoch {epoch+1}:"):
@@ -55,14 +79,14 @@ def train_one_epoch(
         train_preds.append(y_pred)
         train_actuals.append(y)
 
-    # Evaluate training set
+    # Evaluate training set metrics
     train_accuracy, train_aucroc, train_cm = evaluate(
         y_true=torch.cat(train_actuals),
         y_pred=torch.sigmoid(torch.cat(train_preds)),
         device=device,
     )
 
-    # Predict on validation dataset
+    # Predict and evaluate on the validation dataset
     valid_preds = []
     valid_actuals = []
     with torch.no_grad():
@@ -80,7 +104,7 @@ def train_one_epoch(
             valid_preds.append(y_pred)
             valid_actuals.append(y)
 
-    # Evaluate validation set
+    # Evaluate validation set metrics
     valid_accuracy, valid_aucroc, valid_cm = evaluate(
         y_true=torch.cat(valid_actuals),
         y_pred=torch.sigmoid(torch.cat(valid_preds)),
@@ -115,6 +139,26 @@ def train(
     weight_decay: float = 1e-2,
     random_seed: int = 0,
 ):
+    """
+    Train a CNN model for cataract classification.
+
+    This function trains the model for a specified number of epochs, performs validation at the end of each epoch,
+    saves the best model based on validation loss, and logs training and validation metrics.
+
+    Args:
+        train_img_paths : List of paths to the training images.
+        valid_img_paths : List of paths to the validation images.
+        save_path : The path where the best model will be saved.
+        batch_size : The batch size for training and validation. Default is 32.
+        num_epochs : The number of epochs to train the model. Default is 10.
+        lr : The learning rate for the optimizer. Default is 2e-4.
+        weight_decay : The weight decay (L2 regularization) for the optimizer. Default is 1e-2.
+        random_seed : The random seed to use for data augmentation. Default is 0.
+
+    Returns:
+        None: The function saves the best model and training metadata.
+    """
+
     # Initialize model
     if torch.cuda.is_available():
         device = "cuda"
@@ -126,13 +170,12 @@ def train(
     model = timm.create_model("efficientnet_b0", pretrained=True, num_classes=1)
     model.to(device)
 
-    # Get model transform
+    # Set up image transformations for training and validation
     transform = create_transform(
         **resolve_data_config(model.pretrained_cfg, model=model)
     )
 
-    # Define training and validation dataset
-    # Augmentation should not be applied to the validation dataset
+    # Define datasets for training and validation (with augmentation on training data)
     train_dataset = CataractDataset(
         img_filepaths=train_img_paths,
         transform=transform,
@@ -149,32 +192,32 @@ def train(
     valid_dataset = CataractDataset(
         img_filepaths=valid_img_paths,
         transform=transform,
-        augmentation=None,
+        augmentation=None,  # No augmentation for validation
     )
 
-    # Define dataloader
+    # Create dataloaders for training and validation
     train_dataloader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True
     )
     valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size)
 
-    # Define loss and optimizer
+    # Define the loss function and optimizer
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=True
     )
 
-    # Create directory for save_path if it does not exist
+    # Create the save path if it doesn't exist
     save_path = Path(save_path)
     save_path.parent.mkdir(exist_ok=True, parents=True)
 
-    # Define training loop
+    # Training loop
     train_epoch_losses = []
     valid_epoch_losses = []
     best_loss = np.inf
     best_valid_epoch = 0
     for epoch in range(num_epochs):
-        # Run epoch
+        # Perform training and validation for one epoch
         epoch_eval = train_one_epoch(
             model=model,
             train_dataloader=train_dataloader,
@@ -188,27 +231,27 @@ def train(
         train_epoch_losses.append(epoch_eval["train"]["epoch_loss"])
         valid_epoch_losses.append(epoch_eval["valid"]["epoch_loss"])
 
-        # Checkpoint best model
+        # Checkpoint best model (based on validation loss)
         if epoch_eval["valid"]["epoch_loss"] < best_loss:
             best_loss = epoch_eval["valid"]["epoch_loss"]
             best_valid_epoch = epoch + 1
 
+            # Save the best model
             torch.save(model.state_dict(), save_path)
             print(f"Best Model saved at [green]{save_path}[/green]")
 
+            # Save metadata in json about the best epoch
             metadata = {
                 "epoch": epoch,
                 "train_loss": epoch_eval["train"]["epoch_loss"],
                 "valid_loss": epoch_eval["valid"]["epoch_loss"],
             }
-
-            # Save metadata in a JSON file
             with open(
                 Path(save_path).parent / "training_metadata.json", "w"
             ) as f:
                 json.dump(metadata, f)
 
-        # Log training and validation metrics
+        # Log the metrics for this epoch
         train_metric_logs = ", ".join(
             [
                 f"Train {metric}: {epoch_eval['train'][metric]:.6f}"

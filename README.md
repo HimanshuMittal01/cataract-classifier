@@ -1,7 +1,7 @@
 # cataract-classifier
 Binary classification model to identify cataracts in images deployed via FASTAPI
 
-EfficientNet finetuned model is giving 95% accuracy on the test dataset.
+EfficientNet finetuned model is giving 97% accuracy on the test dataset.
 
 <!-- ## How to run
 
@@ -13,7 +13,7 @@ uv venv --python 3.10
 source .venv/bin/activate
 ``` -->
 
-### TODO:
+### Potential Improvements:
 - [ ] Setup tensorboard for monitoring
 - [ ] Add more metrics - precision, recall, f1-score, classification report, confusion matrix, ROC curve
 - [ ] Write API usage documentation with example requests and responses
