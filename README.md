@@ -12,32 +12,33 @@ The system consists of three parts:
 ```bash
 cataract-classifier/
 │
-├── backend/                          # directory for FastAPI code
+├── backend/                              # directory for FastAPI code
 │   └── __init__.py
-│   └── main.py                       # backend entrypoint
+│   └── main.py                           # backend entrypoint
 │
-├── cataract_classifier/              # ML source code
+├── cataract_classifier/                  # ML source code
 │   └── __init__.py
-│   └── data.py                       # contains CataractDataset class and split utility
-│   └── evaluate.py                   # evaluation metrics for monitoring on epoch end
-│   └── predict.py                    # predict target given an image or image paths
-│   └── train.py                      # main training script for finetuning
+│   └── data.py                           # contains CataractDataset class and split utility
+│   └── evaluate.py                       # evaluation metrics for monitoring on epoch end
+│   └── predict.py                        # predict target given an image or image paths
+│   └── train.py                          # main training script for finetuning
 │
-├── docs/                             # directory for documentation
+├── docs/                                 # directory for documentation
 │
-├── frontend/                         # directory for Streamlit code
-│   └── app.py                        # frontend entrypoint
+├── frontend/                             # directory for Streamlit code
+│   └── app.py                            # frontend entrypoint
 │
-├── input/                            # Directory for datasets
-│   └── processed_images/             # Unzipped kaggle dataset
+├── input/                                # Directory for datasets
+│   └── processed_images/                 # Unzipped kaggle dataset
 │       ├── test/
 │       └── train/
 │
-├── models/                           # Results directory
-│   └── finetuned_efficientnet_b0.pt  # Saved model
-│   └── ...
+├── notebooks/                            # Jupyter Notebooks for exploration / experiments
 │
-├── notebooks/                        # Jupyter Notebooks for exploration / experiments
+├── results/                              # Results directory
+│   └── efficientnet_b0/                  # Folder name is same as model name for saving results
+│       └── finetuned_efficientnet_b0.pt  # Saved model
+│       └── ...                           # Other artifacts (saved during training)
 │
 ├── .gitignore
 ├── .pre-commit-config.yaml
@@ -79,7 +80,7 @@ cataract-classifier/
 3. Download the dataset from Kaggle: [Cataract Image Dataset](https://www.kaggle.com/datasets/nandanp6/cataract-image-dataset) and put it in `input/` directory.
 
 4. Fetch the classifier model. You have two options, either:
-- directly download the model from [google drive link](https://drive.google.com/file/d/1Z4bSMfxCcARQ0C-ndKh-lbxdaHGOoD7-/view?usp=drive_link) *(~15MB; open till Dec 15, 2024)* and put in `models/` directory
+- directly download the results from [google drive link](https://drive.google.com/drive/folders/1XgRdz71DEOhuSHSpAf64CP-JHmcj9mG-?usp=drive_link) *(~17MB; open till Dec 15, 2024)* and put it in project root directory
 - or, train your custom model using `main.py` script. Usage:
 
     Simply run

@@ -14,9 +14,13 @@ cli = typer.Typer(pretty_exceptions_show_locals=False)
 @cli.command()
 def train_and_evaluate(
     dataset_path: str = "input/processed_images/",
-    save_path: str = "models/finetuned_efficientnet_b0.pt",
+    results_path: str = "results/",
+    model_name: str = "efficientnet_b0",
     batch_size: int = 32,
     num_epochs: int = 10,
+    lr: float = 2e-4,
+    weight_decay: float = 1e-2,
+    random_seed: int = 0,
 ):
     # Get training and validation datasets
     data_paths = get_dataset_paths(
@@ -26,13 +30,19 @@ def train_and_evaluate(
     train(
         train_img_paths=data_paths["train"],
         valid_img_paths=data_paths["valid"],
-        save_path=save_path,
+        model_name=model_name,
+        results_path=results_path,
         batch_size=batch_size,
         num_epochs=num_epochs,
+        lr=lr,
+        weight_decay=weight_decay,
+        random_seed=random_seed,
     )
 
     predict_on_testset(
-        test_img_paths=data_paths["test"], weights_path=save_path
+        test_img_paths=data_paths["test"],
+        model_name=model_name,
+        results_path=results_path,
     )
 
 

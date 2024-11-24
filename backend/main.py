@@ -28,7 +28,10 @@ else:
 
 # Load the pre-trained model (ensure that the model file exists at the specified path)
 try:
-    model = load_model("models/finetuned_efficientnet_b0.pt")
+    model_name = "efficientnet_b0"
+    model = load_model(
+        model_name, f"results/{model_name}/finetuned_{model_name}.pt"
+    )
 except Exception as e:
     raise RuntimeError(f"Error loading the model: {e}")
 

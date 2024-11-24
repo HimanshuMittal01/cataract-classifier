@@ -19,7 +19,7 @@ from cataract_classifier.data import CataractDataset
 from cataract_classifier.evaluate import evaluate
 
 
-def load_model(weights_path: str):
+def load_model(model_name: str, weights_path: str):
     """
     Load a pre-trained EfficientNet model for cataract classification.
 
@@ -32,7 +32,7 @@ def load_model(weights_path: str):
     if not Path(weights_path).exists():
         raise ValueError(f"Cannot load weights. {weights_path} does not exist.")
 
-    model = timm.create_model("efficientnet_b0", pretrained=True, num_classes=1)
+    model = timm.create_model(model_name, pretrained=True, num_classes=1)
     model.load_state_dict(torch.load(weights_path, weights_only=True))
     return model
 
@@ -63,14 +63,17 @@ def predict_single_image(model, image, device: str = "cpu"):
 
 def predict_on_testset(
     test_img_paths: list[Path],
-    weights_path: str,
+    model_name: str,
+    results_path: str,
     batch_size: int = 32,
 ):
     """Predict and evaluate the model on a test set of images.
 
     Args:
         test_img_paths: List of paths to images in the test set.
-        weights_path: Path to the model weights file.
+        model_name: Name of the backbone network.
+        results_path: Path to the model results directory.
+            Weights will be searched in 'weights_dir / {model_name} / "finetuned_{model_name}.pt"'
         batch_size: The batch size for inference. Default is 32.
 
     Returns:
@@ -85,7 +88,8 @@ def predict_on_testset(
         device = "cpu"
 
     # Load the fine-tuned model
-    model = load_model(weights_path)
+    results_path = Path(results_path) / model_name
+    model = load_model(model_name, results_path / f"finetuned_{model_name}.pt")
     model.to(device)
 
     # Define the transformation to apply to the images (same as used during training)
@@ -132,14 +136,13 @@ def predict_on_testset(
     # Save metrics in json
     scaler_metrics = ["accuracy", "aucroc", "precision", "recall", "f1"]
     metadata = {m: test_eval[m] for m in scaler_metrics}
-    weights_path = Path(weights_path)
-    with open(weights_path.parent / "testing_eval.json", "w") as f:
+    with open(results_path / "testing_eval.json", "w") as f:
         json.dump(metadata, f)
 
     # Save figure metrics like confusion matrix
     plot_metrics = ["cm", "roc"]
     for m in plot_metrics:
-        test_eval[m].savefig(weights_path.parent / f"test_{m}.png")
+        test_eval[m].savefig(results_path / f"test_{m}.png")
 
         # cleanup memory
         test_eval[m].clf()

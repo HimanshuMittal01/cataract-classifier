@@ -124,7 +124,8 @@ def train_one_epoch(
 def train(
     train_img_paths: list[Path],
     valid_img_paths: list[Path],
-    save_path: str,
+    model_name: str,
+    results_path: str,
     batch_size: int = 32,
     num_epochs: int = 10,
     lr: float = 2e-4,
@@ -140,7 +141,8 @@ def train(
     Args:
         train_img_paths : List of paths to the training images.
         valid_img_paths : List of paths to the validation images.
-        save_path : The path where the best model will be saved.
+        results_path : The path where the best model will be saved.
+        model_name : Name of the backbone network
         batch_size : The batch size for training and validation. Default is 32.
         num_epochs : The number of epochs to train the model. Default is 10.
         lr : The learning rate for the optimizer. Default is 2e-4.
@@ -159,7 +161,7 @@ def train(
     else:
         device = "cpu"
 
-    model = timm.create_model("efficientnet_b0", pretrained=True, num_classes=1)
+    model = timm.create_model(model_name, pretrained=True, num_classes=1)
     model.to(device)
 
     # Set up image transformations for training and validation
@@ -200,8 +202,8 @@ def train(
     )
 
     # Create the save path if it doesn't exist
-    save_path = Path(save_path)
-    save_path.parent.mkdir(exist_ok=True, parents=True)
+    results_path = Path(results_path) / model_name
+    results_path.mkdir(exist_ok=True, parents=True)
 
     # Training loop
     train_epoch_losses = []
@@ -229,8 +231,9 @@ def train(
             best_valid_epoch = epoch + 1
 
             # Save the best model
-            torch.save(model.state_dict(), save_path)
-            print(f"Best Model saved at [green]{save_path}[/green]")
+            model_filepath = results_path / f"finetuned_{model_name}.pt"
+            torch.save(model.state_dict(), model_filepath)
+            print(f"Best Model saved at [green]{model_filepath}[/green]")
 
             # Save metadata in json about the best epoch
             scaler_metrics = ["accuracy", "aucroc", "precision", "recall", "f1"]
@@ -243,18 +246,14 @@ def train(
                     m: epoch_eval["valid"][m] for m in scaler_metrics
                 },
             }
-            with open(save_path.parent / "training_eval.json", "w") as f:
+            with open(results_path / "training_eval.json", "w") as f:
                 json.dump(metadata, f)
 
             # Save figure metrics like confusion matrix
             plot_metrics = ["cm", "roc"]
             for m in plot_metrics:
-                epoch_eval["train"][m].savefig(
-                    save_path.parent / f"train_{m}.png"
-                )
-                epoch_eval["valid"][m].savefig(
-                    save_path.parent / f"valid_{m}.png"
-                )
+                epoch_eval["train"][m].savefig(results_path / f"train_{m}.png")
+                epoch_eval["valid"][m].savefig(results_path / f"valid_{m}.png")
 
                 # cleanup memory
                 epoch_eval["train"][m].clf()
@@ -294,5 +293,5 @@ def train(
             plt.ylabel("Loss")
             plt.title("Loss Curve")
             plt.legend()
-            plt.savefig(save_path.parent / "loss_curve.png")
+            plt.savefig(results_path / "loss_curve.png")
             plt.close("all")
