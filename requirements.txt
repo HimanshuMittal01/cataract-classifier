@@ -4,3 +4,4 @@ timm
 fastapi[standard]
 matplotlib
 albumentations
+streamlit
