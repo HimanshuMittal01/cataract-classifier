@@ -21,12 +21,15 @@ def load_model(weights_path: str):
     return model
 
 
-def predict_single_image(model, image):
+def predict_single_image(model, image, device="cpu"):
     transform = create_transform(
         **resolve_data_config(model.pretrained_cfg, model=model)
     )
     img = transform(image)
-    prediction = model(img.unsqueeze(0))
+
+    model.to(device)
+    model.eval()
+    prediction = model(img.to(device).unsqueeze(0))
 
     pred_prob = torch.sigmoid(prediction).item()
     return pred_prob
@@ -55,14 +58,14 @@ def predict_on_testset(
 
     # Define training and validation dataset
     # Augmentation should not be applied to the validation dataset
-    train_dataset = CataractDataset(
+    test_dataset = CataractDataset(
         img_filepaths=test_img_paths,
         transform=transform,
         augmentation=None,
     )
 
     # Define dataloader
-    test_dataloader = DataLoader(train_dataset, batch_size=batch_size)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
 
     # Predict on test dataset
     test_preds = []
