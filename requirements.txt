@@ -1,8 +1,0 @@
-ipykernel
-typer
-timm
-fastapi[standard]
-matplotlib
-albumentations
-streamlit
-torchmetrics
