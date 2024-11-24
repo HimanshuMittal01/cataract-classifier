@@ -1,10 +1,6 @@
 # Cataract Binary Classification
 
-This project provides a machine learning-based solution for classifying eye images to determine if the eye shows signs of cataracts. The model uses a fine-tuned **EfficientNet-B0** architecture to predict whether an image belongs to the "Cataract" or "Normal" class. 
-
-<div style="width:30%; margin:auto;">
-![App Demo Screenshot](docs/static/sample_app_ss.png)
-</div>
+This project provides a machine learning-based solution for classifying eye images to determine if the eye shows signs of cataracts. The model uses a fine-tuned **EfficientNet-B0** architecture to predict whether an image belongs to the "Cataract" or "Normal" class.
 
 The system consists of three parts:
 1. **Backend API**: A FastAPI server for handling image uploads and predictions.
@@ -122,9 +118,11 @@ streamlit run frontend/app.py
 
 This will open http://localhost:8501/ in the browser where you can upload images and predict 'cataract' or 'normal'.
 
+<p align="center">
+<img src="docs/static/sample_app_ss.png" style="width:50%; margin:auto; " />
+</p>
+
 ### Potential Improvements:
-- [ ] Setup tensorboard for monitoring
-- [ ] Add more metrics - precision, recall, f1-score, classification report, confusion matrix, ROC curve
 - [ ] Write API example requests and responses
 - [ ] Write a custom CNN model
 - [ ] Provide three options for model in the frontend

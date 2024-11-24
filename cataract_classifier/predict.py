@@ -5,10 +5,12 @@ and evaluating the model on a test set. It supports both single image prediction
 on a test set.
 """
 
+import json
 from pathlib import Path
 
 import timm
 import torch
+import matplotlib.pyplot as plt
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from torch.utils.data import DataLoader
@@ -27,6 +29,9 @@ def load_model(weights_path: str):
     Returns:
         The pre-trained model with loaded weights.
     """
+    if not Path(weights_path).exists():
+        raise ValueError(f"Cannot load weights. {weights_path} does not exist.")
+
     model = timm.create_model("efficientnet_b0", pretrained=True, num_classes=1)
     model.load_state_dict(torch.load(weights_path, weights_only=True))
     return model
@@ -114,12 +119,28 @@ def predict_on_testset(
             test_actuals.append(y)
 
     # Evaluate validation set
-    test_accuracy, test_aucroc, test_cm = evaluate(
+    test_eval = evaluate(
         y_true=torch.cat(test_actuals),
         y_pred=torch.sigmoid(torch.cat(test_preds)),
         device=device,
     )
 
-    # Print evaluation metrics
-    print(f"Test Accuracy: {test_accuracy:.6f}")
-    print(f"Test AUCROC: {test_aucroc:.6f}")
+    # Print accuracy and AUCROC
+    print(f"Test Accuracy: {test_eval['accuracy']:.6f}")
+    print(f"Test AUCROC: {test_eval['aucroc']:.6f}")
+
+    # Save metrics in json
+    scaler_metrics = ["accuracy", "aucroc", "precision", "recall", "f1"]
+    metadata = {m: test_eval[m] for m in scaler_metrics}
+    weights_path = Path(weights_path)
+    with open(weights_path.parent / "testing_eval.json", "w") as f:
+        json.dump(metadata, f)
+
+    # Save figure metrics like confusion matrix
+    plot_metrics = ["cm", "roc"]
+    for m in plot_metrics:
+        test_eval[m].savefig(weights_path.parent / f"test_{m}.png")
+
+        # cleanup memory
+        test_eval[m].clf()
+        plt.close()

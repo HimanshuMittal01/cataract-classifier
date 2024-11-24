@@ -9,6 +9,7 @@ Functions:
       model saving, and logging metrics.
 """
 
+import gc
 import json
 from pathlib import Path
 
@@ -16,6 +17,7 @@ import timm
 import torch
 import numpy as np
 import albumentations as A
+import matplotlib.pyplot as plt
 from rich import print
 from rich.progress import track
 from torch.utils.data import DataLoader
@@ -51,8 +53,8 @@ def train_one_epoch(
 
     Returns:
         dict: A dictionary containing the training and validation metrics for the epoch:
-            - "train": Training metrics (loss, accuracy, AUC-ROC, confusion matrix).
-            - "valid": Validation metrics (loss, accuracy, AUC-ROC, confusion matrix).
+            - "train": Training metrics (loss, accuracy, AUC-ROC, and other evaluation metrics).
+            - "valid": Validation metrics (loss, accuracy, AUC-ROC, and other evaluation metrics).
     """
     # Initialize the average loss for the current epoch
     train_step_losses = []
@@ -80,11 +82,12 @@ def train_one_epoch(
         train_actuals.append(y)
 
     # Evaluate training set metrics
-    train_accuracy, train_aucroc, train_cm = evaluate(
+    train_metrics = evaluate(
         y_true=torch.cat(train_actuals),
         y_pred=torch.sigmoid(torch.cat(train_preds)),
         device=device,
     )
+    train_metrics.update({"epoch_loss": np.average(train_step_losses)})
 
     # Predict and evaluate on the validation dataset
     valid_preds = []
@@ -105,27 +108,16 @@ def train_one_epoch(
             valid_actuals.append(y)
 
     # Evaluate validation set metrics
-    valid_accuracy, valid_aucroc, valid_cm = evaluate(
+    valid_metrics = evaluate(
         y_true=torch.cat(valid_actuals),
         y_pred=torch.sigmoid(torch.cat(valid_preds)),
         device=device,
     )
+    valid_metrics.update({"epoch_loss": np.average(valid_step_losses)})
 
     return {
-        "train": {
-            "epoch_loss": np.average(train_step_losses),
-            "step_losses": train_step_losses,
-            "accuracy": train_accuracy,
-            "aucroc": train_aucroc,
-            "cm": train_cm,
-        },
-        "valid": {
-            "epoch_loss": np.average(valid_step_losses),
-            "step_losses": valid_step_losses,
-            "accuracy": valid_accuracy,
-            "aucroc": valid_aucroc,
-            "cm": valid_cm,
-        },
+        "train": train_metrics,
+        "valid": valid_metrics,
     }
 
 
@@ -241,15 +233,34 @@ def train(
             print(f"Best Model saved at [green]{save_path}[/green]")
 
             # Save metadata in json about the best epoch
+            scaler_metrics = ["accuracy", "aucroc", "precision", "recall", "f1"]
             metadata = {
                 "epoch": epoch,
-                "train_loss": epoch_eval["train"]["epoch_loss"],
-                "valid_loss": epoch_eval["valid"]["epoch_loss"],
+                "train_metrics": {
+                    m: epoch_eval["train"][m] for m in scaler_metrics
+                },
+                "valid_metrics": {
+                    m: epoch_eval["valid"][m] for m in scaler_metrics
+                },
             }
-            with open(
-                Path(save_path).parent / "training_metadata.json", "w"
-            ) as f:
+            with open(save_path.parent / "training_eval.json", "w") as f:
                 json.dump(metadata, f)
+
+            # Save figure metrics like confusion matrix
+            plot_metrics = ["cm", "roc"]
+            for m in plot_metrics:
+                epoch_eval["train"][m].savefig(
+                    save_path.parent / f"train_{m}.png"
+                )
+                epoch_eval["valid"][m].savefig(
+                    save_path.parent / f"valid_{m}.png"
+                )
+
+                # cleanup memory
+                epoch_eval["train"][m].clf()
+                epoch_eval["valid"][m].clf()
+                plt.close("all")
+                gc.collect()
 
         # Log the metrics for this epoch
         train_metric_logs = ", ".join(
@@ -267,3 +278,21 @@ def train(
         print(train_metric_logs)
         print(valid_metric_logs)
         print(f"Best Loss: {best_loss:.5f} at epoch {best_valid_epoch}!!")
+
+        # Create loss vs epochs after every epoch
+        if epoch >= 1:
+            plt.figure()
+            plt.plot(
+                list(range(1, epoch + 2)), train_epoch_losses, label="Training"
+            )
+            plt.plot(
+                list(range(1, epoch + 2)),
+                valid_epoch_losses,
+                label="Validation",
+            )
+            plt.xlabel("Epochs")
+            plt.ylabel("Loss")
+            plt.title("Loss Curve")
+            plt.legend()
+            plt.savefig(save_path.parent / "loss_curve.png")
+            plt.close("all")
