@@ -2,9 +2,7 @@
 
 This project provides a machine learning-based solution for classifying eye images to determine if the eye shows signs of cataracts. The model uses a fine-tuned **EfficientNet-B0** architecture to predict whether an image belongs to the "Cataract" or "Normal" class. 
 
-<div style="width:50%; margin:auto;">
-<center>Figure 1. App Demo</center>
-
+<div style="width:30%; margin:auto;">
 ![App Demo Screenshot](docs/static/sample_app_ss.png)
 </div>
 
@@ -16,7 +14,7 @@ The system consists of three parts:
 ## Project Tree
 
 ```bash
-gstnhackathon2024/
+cataract-classifier/
 │
 ├── backend/                          # directory for FastAPI code
 │   └── __init__.py
@@ -32,7 +30,7 @@ gstnhackathon2024/
 ├── docs/                             # directory for documentation
 │
 ├── frontend/                         # directory for Streamlit code
-│   └── app.py 
+│   └── app.py                        # frontend entrypoint
 │
 ├── input/                            # Directory for datasets
 │   └── processed_images/             # Unzipped kaggle dataset
@@ -84,7 +82,7 @@ gstnhackathon2024/
 
 3. Download the dataset from Kaggle: [Cataract Image Dataset](https://www.kaggle.com/datasets/nandanp6/cataract-image-dataset) and put it in `input/` directory.
 
-4. Get classifier model. You have two options, either:
+4. Fetch the classifier model. You have two options, either:
 - directly download the model from [google drive link](https://drive.google.com/file/d/1Z4bSMfxCcARQ0C-ndKh-lbxdaHGOoD7-/view?usp=drive_link) *(~15MB; open till Dec 15, 2024)* and put in `models/` directory
 - or, train your custom model using `main.py` script. Usage:
 
@@ -93,9 +91,11 @@ gstnhackathon2024/
     python main.py
     ```
 
-    There are other options you can specify like `num-epochs`. See all options using `python main.py --help`
+    There are other options as well you can specify for e.g. `num-epochs`.
     ```
     python main.py --num-epochs 4
+
+    # See all options using `python main.py --help`
     ```
 
 5. Verify that your project directory matches this [project tree](#project-tree). Now, you are ready to launch the app.
@@ -104,17 +104,12 @@ gstnhackathon2024/
 
 **1. Start the backend server:**
 
-- Using `uv`
-    ```zsh
-    uv run fastapi dev backend/main.py
-    ```
+```zsh
+fastapi dev backend/main.py
 
-- Otherwise
-    ```zsh
-    fastapi dev backend/main.py
-
-    # Use `fastapi run backend/main.py` for production
-    ```
+# Use `uv run fastapi dev backend/main.py` if you're using `uv`
+# Use `fastapi run backend/main.py` for production
+```
 
 Verify that API is running successfully at http://127.0.0.1:8000/ </br>
 View API docs at http://127.0.0.1:8000/docs
@@ -125,7 +120,7 @@ View API docs at http://127.0.0.1:8000/docs
 streamlit run frontend/app.py
 ```
 
-This will open http://localhost:8501/ in your browser where you can upload images and it will predict cataract or not cataract.
+This will open http://localhost:8501/ in the browser where you can upload images and predict 'cataract' or 'normal'.
 
 ### Potential Improvements:
 - [ ] Setup tensorboard for monitoring
