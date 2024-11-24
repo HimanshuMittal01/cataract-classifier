@@ -5,7 +5,9 @@ import typer
 from cataract_classifier.data import get_dataset_paths
 from cataract_classifier.train import train
 
-cli = typer.Typer()
+# pretty_exceptions_show_locals is set to False because locals value
+# are long, and sometimes it is difficult to traceback exceptions
+cli = typer.Typer(pretty_exceptions_show_locals=False)
 
 
 @cli.command()

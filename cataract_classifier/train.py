@@ -10,10 +10,32 @@ import albumentations as A
 from rich import print
 from rich.progress import track
 from torch.utils.data import DataLoader
+from torchmetrics.classification import (
+    BinaryAccuracy,
+    BinaryAUROC,
+    BinaryConfusionMatrix,
+)
 from timm.data import resolve_data_config
 from timm.data.transforms_factory import create_transform
 
 from cataract_classifier.data import CataractDataset
+
+
+def evaluate(y_pred, y_true, device="cpu"):
+    """Evaluate predictions on accuracy, ROC-AUC, etc"""
+    accuracy_metric = BinaryAccuracy(threshold=0.5).to(device)
+    accuracy = accuracy_metric(y_pred, y_true).item()
+
+    # setting thresholds=None is most accurate but also memory consuming
+    aucroc_metric = BinaryAUROC(thresholds=None).to(device)
+    aucroc = aucroc_metric(y_pred, y_true).item()
+
+    # output a figure
+    cm_metric = BinaryConfusionMatrix(threshold=0.5).to(device)
+    cm_metric.update(y_pred, y_true)
+    cm_, ax_ = cm_metric.plot()
+
+    return accuracy, aucroc, cm_
 
 
 def train_one_epoch(
@@ -25,17 +47,23 @@ def train_one_epoch(
     epoch: int,
     device: str = "cuda",
 ):
+    """Iterate through train dataloader once for training set to update model weights.
+
+    Then, iterate through validation dataloader once for evaluation.
+    """
     # Initialize the average loss for the current epoch
     train_step_losses = []
     valid_step_losses = []
 
     # Run steps on training dataloader
+    train_preds = []
+    train_actuals = []
     for X, y in track(train_dataloader, description=f"Epoch {epoch+1}:"):
-        X, y = X.to(device), y.to(device)
+        X, y = X.to(device), y.to(device).unsqueeze(1)
 
         # Forward pass
         y_pred = model(X)
-        loss = criterion(y_pred, y.unsqueeze(1))
+        loss = criterion(y_pred, y)
 
         # Compute gradeients and update model parameters
         loss.backward()
@@ -45,20 +73,57 @@ def train_one_epoch(
         # Update metrics
         train_step_losses.append(loss.detach().item())
 
-    # Evaluate validation dataset
+        train_preds.append(y_pred)
+        train_actuals.append(y)
+
+    # Evaluate training set
+    train_accuracy, train_aucroc, train_cm = evaluate(
+        y_true=torch.vstack(train_actuals),
+        y_pred=torch.vstack(train_preds),
+        device=device,
+    )
+
+    # Predict on validation dataset
+    valid_preds = []
+    valid_actuals = []
     with torch.no_grad():
         model.eval()
         for X, y in valid_dataloader:
-            X, y = X.to(device), y.to(device)
+            X, y = X.to(device), y.to(device).unsqueeze(1)
 
             # Forward pass
             y_pred = model(X)
-            loss = criterion(y_pred, y.unsqueeze(1))
+            loss = criterion(y_pred, y)
 
             # Update metrics
             valid_step_losses.append(loss.detach().item())
 
-    return train_step_losses, valid_step_losses
+            valid_preds.append(y_pred)
+            valid_actuals.append(y)
+
+    # Evaluate validation set
+    valid_accuracy, valid_aucroc, valid_cm = evaluate(
+        y_true=torch.cat(valid_actuals),
+        y_pred=torch.cat(valid_preds),
+        device=device,
+    )
+
+    return {
+        "train": {
+            "epoch_loss": np.average(train_step_losses),
+            "step_losses": train_step_losses,
+            "accuracy": train_accuracy,
+            "aucroc": train_aucroc,
+            "cm": train_cm,
+        },
+        "valid": {
+            "epoch_loss": np.average(valid_step_losses),
+            "step_losses": valid_step_losses,
+            "accuracy": valid_accuracy,
+            "aucroc": valid_aucroc,
+            "cm": valid_cm,
+        },
+    }
 
 
 def train(
@@ -120,9 +185,10 @@ def train(
     train_epoch_losses = []
     valid_epoch_losses = []
     best_loss = np.inf
+    best_valid_epoch = 0
     for epoch in range(num_epochs):
         # Run epoch
-        train_step_losses, valid_step_losses = train_one_epoch(
+        epoch_eval = train_one_epoch(
             model=model,
             train_dataloader=train_dataloader,
             valid_dataloader=valid_dataloader,
@@ -132,21 +198,21 @@ def train(
             device=device,
         )
 
-        train_loss = np.average(train_step_losses)
-        valid_loss = np.average(valid_step_losses)
-        train_epoch_losses.append(train_loss)
-        valid_epoch_losses.append(valid_loss)
+        train_epoch_losses.append(epoch_eval["train"]["epoch_loss"])
+        valid_epoch_losses.append(epoch_eval["valid"]["epoch_loss"])
 
         # Checkpoint best model
-        if valid_loss < best_loss:
-            best_loss = valid_loss
+        if epoch_eval["valid"]["epoch_loss"] < best_loss:
+            best_loss = epoch_eval["valid"]["epoch_loss"]
+            best_valid_epoch = epoch + 1
+
             torch.save(model.state_dict(), save_path)
             print(f"Best Model saved at [green]{save_path}[/green]")
 
             metadata = {
                 "epoch": epoch,
-                "train_loss": train_loss,
-                "valid_loss": valid_loss,
+                "train_loss": epoch_eval["train"]["epoch_loss"],
+                "valid_loss": epoch_eval["valid"]["epoch_loss"],
             }
 
             # Save metadata in a JSON file
@@ -155,6 +221,19 @@ def train(
             ) as f:
                 json.dump(metadata, f)
 
-        print(
-            f"Train Loss: {train_loss:.5f}, Valid Loss: {valid_loss:.5f}, Best Loss: {best_loss:.5f}"
+        # Log training and validation metrics
+        train_metric_logs = ", ".join(
+            [
+                f"Train {metric}: {epoch_eval['train'][metric]:.6f}"
+                for metric in ["epoch_loss", "accuracy", "aucroc"]
+            ]
         )
+        valid_metric_logs = ", ".join(
+            [
+                f"Valid {metric}: {epoch_eval['valid'][metric]:.6f}"
+                for metric in ["epoch_loss", "accuracy", "aucroc"]
+            ]
+        )
+        print(train_metric_logs)
+        print(valid_metric_logs)
+        print(f"Best Loss: {best_loss:.5f} at epoch {best_valid_epoch}!!")

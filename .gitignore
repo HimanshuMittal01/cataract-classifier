@@ -1,6 +1,10 @@
 # Data
 input/
 
+# Output
+models/
+results/
+
 
 # Environment
 .env
