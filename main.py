@@ -24,7 +24,7 @@ def train_and_evaluate(
 ):
     # Get training and validation datasets
     data_paths = get_dataset_paths(
-        dataset_path, valid_test_split=0.5, random_seed=42
+        dataset_path, valid_test_split=0.5, random_seed=random_seed
     )
 
     train(

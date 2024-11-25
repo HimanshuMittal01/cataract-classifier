@@ -2,6 +2,8 @@
 
 This project provides a machine learning-based solution for classifying eye images to determine if the eye shows signs of cataracts. The model uses a fine-tuned **EfficientNet-B0** architecture to predict whether an image belongs to the "Cataract" or "Normal" class.
 
+The model achieved 98.36% accuracy on the holdout dataset. More details in [Project Report](https://docs.google.com/document/d/1KfH6fVNJZXXpRWjPOsDJ2fT2urjExHhpuTjELu3iM_Q/edit?usp=sharing)
+
 The system consists of three parts:
 1. **Backend API**: A FastAPI server for handling image uploads and predictions.
 2. **Frontend App**: A Streamlit app for users to upload images and view the prediction results.
