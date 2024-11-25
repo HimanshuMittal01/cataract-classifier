@@ -125,7 +125,7 @@ This will open http://localhost:8501/ in the browser where you can upload images
 <img src="docs/static/sample_app_ss.png" style="width:50%; margin:auto; " />
 </p>
 
-### Potential Improvements:
-- [ ] Write API example requests and responses
-- [ ] Write a custom CNN model
-- [ ] Provide three options for model in the frontend
+### Challenges and Future Work:
+- **Adding OpenAPI Examples for File Uploads:** The `UploadFile` type in FastAPI doesn’t support OpenAPI examples in the same way as Pydantic models. As a result, it’s not straightforward to provide file upload examples in the API documentation. We’ll need to rely on descriptive text in the docs to guide users on file upload expectations.
+  
+- **Expanding Model Options for Prediction:** Currently, only one model is available for image classification. Future improvements could include offering multiple model options (e.g., custom CNNs, ConvNeXt, etc.) for the user to select from. This would allow users to compare different models' performance on the same image.

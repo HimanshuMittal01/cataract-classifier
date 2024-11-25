@@ -11,7 +11,7 @@ from io import BytesIO
 
 import torch
 from PIL import Image
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Query, File
 
 from cataract_classifier.predict import load_model, predict_single_image
 
@@ -42,25 +42,51 @@ def index():
     return {"message": "Welcome to Cataract Binary Classifier!"}
 
 
-@app.post("/predict/")
-async def predict(file: UploadFile, threshold: float = 0.5):
-    """
-    Predict whether a given image contains cataracts or not.
-
-    Args:
-        file: The image file uploaded by the user for prediction.
-        threshold: The probability threshold for classification. Default is 0.5.
-            If the model's probability is greater than or equal to this threshold,
-            the image is classified as "Cataract". Otherwise, it is classified as "Normal".
-
-    Returns:
-        dict: A dictionary containing:
-            - "Class" (str): Predicted class label ("Cataract" or "Normal").
-            - "Probability" (float): The model's predicted probability score for the class.
-
-    Raises:
-        HTTPException: If the uploaded file is not a valid image.
-    """
+@app.post(
+    "/predict/",
+    response_description="The predicted class label and the associated probability for the uploaded image.",
+    responses={
+        200: {
+            "description": "Successful prediction with class and probability.",
+            "content": {
+                "application/json": {
+                    "example": {"Class": "Cataract", "Probability": 0.85}
+                }
+            },
+        },
+        400: {
+            "description": "Invalid image file uploaded.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid image file."}
+                }
+            },
+        },
+        500: {
+            "description": "Prediction error from the model.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Prediction error: model error message"
+                    }
+                }
+            },
+        },
+    },
+)
+async def predict(
+    file: UploadFile = File(
+        ...,
+        description="The image file to be uploaded for prediction. Supported formats include PNG, JPG, JPEG.",
+    ),
+    threshold: float = Query(
+        0.5,
+        ge=0,
+        le=1,
+        description="The probability threshold for classification. If the model's probability is greater than or equal to this threshold, the image is classified as 'Cataract'. Otherwise, it is classified as 'Normal'.",
+    ),
+):
+    """Predict whether a given image contains cataracts or not."""
     global model
 
     # Validate the file type - check if the uploaded file is an image
